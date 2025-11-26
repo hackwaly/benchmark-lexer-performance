@@ -1,5 +1,5 @@
 ///|
-let keywords : ReadOnlyArray[StringView] = [
+let keywords : ReadOnlyArray[BytesView] = [
   "as", "else", "extern", "fn", "fnalias", "if", "let", "const", "match", "using",
   "mut", "type", "typealias", "struct", "enum", "trait", "traitalias", "derive",
   "while", "break", "continue", "import", "return", "throw", "raise", "try", "catch",
@@ -9,20 +9,20 @@ let keywords : ReadOnlyArray[StringView] = [
 ]
 
 ///|
-let keyword_set : Set[StringView] = Set::from_array(keywords)
+let keyword_set : Set[BytesView] = Set::from_array(keywords)
 
 ///|
 priv enum Token {
-  Keyword(StringView)
-  Identifier(StringView)
-  Number(StringView)
+  Keyword(BytesView)
+  Identifier(BytesView)
+  Number(BytesView)
 } derive(Show, ToJson)
 
 ///|
-fn tokenize_two_pass(input : StringView) -> Array[Token] {
+fn tokenize_two_pass(input : BytesView) -> Array[Token] {
   let mut remaining = input
   let tokens = []
-  while !remaining.is_empty() {
+  while remaining.length() > 0 {
     lexmatch remaining with longest {
       ("[a-zA-Z_][a-zA-Z_0-9]*" as tok, r) => {
         let token = if keyword_set.contains(tok) {
@@ -38,17 +38,17 @@ fn tokenize_two_pass(input : StringView) -> Array[Token] {
         remaining = r
       }
       ("\s+", r) => remaining = r
-      _ => remaining = try! remaining[1:]
+      _ => remaining = remaining[1:]
     }
   }
   tokens
 }
 
 ///|
-fn tokenize_one_pass(input : StringView) -> Array[Token] {
+fn tokenize_one_pass(input : BytesView) -> Array[Token] {
   let mut remaining = input
   let tokens = []
-  while !remaining.is_empty() {
+  while remaining.length() > 0{
     lexmatch remaining with longest {
       ("as" as tok, r) => {
         tokens.push(Keyword(tok))
@@ -251,7 +251,7 @@ fn tokenize_one_pass(input : StringView) -> Array[Token] {
         remaining = r
       }
       ("\s+", r) => remaining = r
-      _ => remaining = try! remaining[1:]
+      _ => remaining = remaining[1:]
     }
   }
   tokens
@@ -259,7 +259,7 @@ fn tokenize_one_pass(input : StringView) -> Array[Token] {
 
 ///|
 test {
-  let input = "let priv pub 1323"
+  let input = b"let priv pub 1323"
   @json.inspect(tokenize_two_pass(input), content=[
     ["Keyword", "let"],
     ["Keyword", "priv"],
@@ -276,7 +276,7 @@ test {
 
 ///|
 test (b : @bench.T) {
-  let input = "let priv pub 123 ".repeat(1000)
+  let input = b"let priv pub 123 ".repeat(1000)
   b.bench(name="one pass", fn() { b.keep(tokenize_one_pass(input)) })
   b.bench(name="two pass", fn() { b.keep(tokenize_two_pass(input)) })
 }
